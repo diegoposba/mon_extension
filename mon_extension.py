@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QLocale, QTranslator, QCoreApplication
-from qgis.core import QgsSettings
+from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
@@ -187,6 +187,12 @@ class MonExtension:
         if self.first_start == True:
             self.first_start = False
             self.dlg = MonExtensionDialog()
+
+        # US1 : liste des couches ponctuelles du projet
+        self.dlg.cb_couches.clear()
+        for couche in QgsProject.instance().mapLayers().values():
+            if isinstance(couche, QgsVectorLayer) and couche.geometryType() == QgsWkbTypes.PointGeometry:
+                self.dlg.cb_couches.addItem(couche.name())
 
         # show the dialog
         self.dlg.show()
