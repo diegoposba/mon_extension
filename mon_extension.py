@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QLocale, QTranslator, QCoreApplication
-from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsGeometry, Qgis
 from qgis.gui import QgsMapToolEmitPoint
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -205,6 +205,26 @@ class MonExtension:
                 f"{adresse['housenumber']} {adresse['street']}, {adresse['citycode']} {adresse['city']}")
         else:
             self.dlg.lbl_adresse.setText("Aucune adresse trouvée")
+
+        # US4 : nombre d'objets de la couche selectionnee a moins de X mètres
+        distance = self.dlg.le_distance.text()
+        if not distance.isdigit():
+            self.iface.messageBar().pushMessage("Erreur", "La distance doit être un nombre entier", level=Qgis.Critical)
+            return
+        couches = QgsProject.instance().mapLayersByName(self.dlg.cb_couches.currentText())
+        if not couches:
+            return
+        couche = couches[0]
+        # zone tampon calculee en Lambert 93 (metres), puis passee dans le SCR de la couche
+        crs_l93 = QgsCoordinateReferenceSystem("EPSG:2154")
+        point_l93 = QgsCoordinateTransform(crs_carte, crs_l93, QgsProject.instance()).transform(point)
+        tampon = QgsGeometry.fromPointXY(point_l93).buffer(int(distance), 20)
+        tampon.transform(QgsCoordinateTransform(crs_l93, couche.crs(), QgsProject.instance()))
+        nb_objets = 0
+        for objet in couche.getFeatures():
+            if objet.geometry().intersects(tampon):
+                nb_objets += 1
+        self.dlg.lbl_nb_objets.setText(str(nb_objets))
 
 
     def run(self):
