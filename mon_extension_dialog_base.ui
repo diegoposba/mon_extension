@@ -94,6 +94,32 @@
     </rect>
    </property>
   </widget>
+  <widget class="QLabel" name="label_adresse" >
+   <property name="geometry" >
+    <rect>
+     <x>20</x>
+     <y>160</y>
+     <width>80</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="text" >
+    <string>Adresse :</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="lbl_adresse" >
+   <property name="geometry" >
+    <rect>
+     <x>100</x>
+     <y>160</y>
+     <width>280</width>
+     <height>25</height>
+    </rect>
+   </property>
+   <property name="wordWrap" >
+    <bool>true</bool>
+   </property>
+  </widget>
  </widget>
  <resources/>
  <connections/>

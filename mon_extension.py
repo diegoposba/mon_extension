@@ -30,6 +30,7 @@ from qgis.PyQt.QtWidgets import QAction
 # Import the code for the dialog
 from .mon_extension_dialog import MonExtensionDialog
 import os.path
+import requests
 
 
 class MonExtension:
@@ -189,6 +190,21 @@ class MonExtension:
         point_wgs84 = transform.transform(point)
         self.dlg.lbl_longitude.setText(f"{point_wgs84.x():.5f}")
         self.dlg.lbl_latitude.setText(f"{point_wgs84.y():.5f}")
+
+        # US3 : adresse BAN la plus proche
+        reponse = requests.get("https://data.geopf.fr/geocodage/reverse", params={
+            "lat": point_wgs84.y(),
+            "lon": point_wgs84.x(),
+            "type": "housenumber",
+            "limit": 1,
+        })
+        resultats = reponse.json()["features"]
+        if resultats:
+            adresse = resultats[0]["properties"]
+            self.dlg.lbl_adresse.setText(
+                f"{adresse['housenumber']} {adresse['street']}, {adresse['citycode']} {adresse['city']}")
+        else:
+            self.dlg.lbl_adresse.setText("Aucune adresse trouvée")
 
 
     def run(self):
