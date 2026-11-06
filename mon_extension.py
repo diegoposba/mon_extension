@@ -22,7 +22,8 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QLocale, QTranslator, QCoreApplication
-from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes
+from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform
+from qgis.gui import QgsMapToolEmitPoint
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
 
@@ -177,6 +178,17 @@ class MonExtension:
                 self.tr(u'&TSIPyQGIS'),
                 action)
             self.iface.removeToolBarIcon(action)
+        if self.first_start is False:
+            self.canvas.unsetMapTool(self.pointTool)
+
+    def displayPoint(self, point, button):
+        """US2 : affiche le point clique (QgsPointXY) en WGS 84"""
+        crs_carte = self.canvas.mapSettings().destinationCrs()
+        crs_wgs84 = QgsCoordinateReferenceSystem("EPSG:4326")
+        transform = QgsCoordinateTransform(crs_carte, crs_wgs84, QgsProject.instance())
+        point_wgs84 = transform.transform(point)
+        self.dlg.lbl_longitude.setText(f"{point_wgs84.x():.5f}")
+        self.dlg.lbl_latitude.setText(f"{point_wgs84.y():.5f}")
 
 
     def run(self):
@@ -187,6 +199,10 @@ class MonExtension:
         if self.first_start == True:
             self.first_start = False
             self.dlg = MonExtensionDialog()
+            # US2 : clique sur la carte
+            self.canvas = self.iface.mapCanvas()
+            self.pointTool = QgsMapToolEmitPoint(self.canvas)
+            self.pointTool.canvasClicked.connect(self.displayPoint)
 
         # US1 : liste des couches ponctuelles du projet
         self.dlg.cb_couches.clear()
@@ -194,12 +210,6 @@ class MonExtension:
             if isinstance(couche, QgsVectorLayer) and couche.geometryType() == QgsWkbTypes.PointGeometry:
                 self.dlg.cb_couches.addItem(couche.name())
 
-        # show the dialog
+        # US2 : clique sur la carte
+        self.canvas.setMapTool(self.pointTool)
         self.dlg.show()
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        # See if OK was pressed
-        if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
