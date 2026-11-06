@@ -246,6 +246,19 @@ class MonExtension:
         self.dlg.lbl_nb_objets.setText(str(nb_objets))
 
 
+    def restaurerOutil(self):
+        """US6 : reactive l'outil qui etait actif avant le lancement de l'extension"""
+        if self.outilPrecedent:
+            self.canvas.setMapTool(self.outilPrecedent)
+        else:
+            self.canvas.unsetMapTool(self.pointTool)
+
+    def supprimerZoneTampon(self):
+        """US6 : supprime la couche de la zone tampon du projet, si elle existe"""
+        for zone in QgsProject.instance().mapLayersByName("Zone tampon"):
+            QgsProject.instance().removeMapLayer(zone.id())
+
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -258,12 +271,19 @@ class MonExtension:
             self.canvas = self.iface.mapCanvas()
             self.pointTool = QgsMapToolEmitPoint(self.canvas)
             self.pointTool.canvasClicked.connect(self.displayPoint)
+            # US6 : gestion de la fermeture de la fenetre
+            self.dlg.rejected.connect(self.restaurerOutil)  
+            self.dlg.annulation.connect(self.supprimerZoneTampon)
 
         # US1 : liste des couches ponctuelles du projet
         self.dlg.cb_couches.clear()
         for couche in QgsProject.instance().mapLayers().values():
             if isinstance(couche, QgsVectorLayer) and couche.geometryType() == QgsWkbTypes.PointGeometry:
                 self.dlg.cb_couches.addItem(couche.name())
+
+        # US6 : memoriser l'outil actif avant le lancement de l'extension
+        if self.canvas.mapTool() != self.pointTool:
+            self.outilPrecedent = self.canvas.mapTool()
 
         # US2 : clique sur la carte
         self.canvas.setMapTool(self.pointTool)

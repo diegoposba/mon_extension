@@ -26,6 +26,7 @@ import os
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
+from qgis.PyQt.QtCore import pyqtSignal
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(
@@ -37,6 +38,9 @@ FORM_CLASS, _ = uic.loadUiType(
 
 
 class MonExtensionDialog(QtWidgets.QDialog, FORM_CLASS):
+    # US6 : signal emis uniquement quand on clique sur le bouton "Annuler"
+    annulation = pyqtSignal()
+
     def __init__(self, parent=None):
         """Constructor."""
         super(MonExtensionDialog, self).__init__(parent)
@@ -46,3 +50,9 @@ class MonExtensionDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        # US6 : la croix et la touche Echap appellent reject()
+        self.btn_annuler.clicked.connect(self.annuler)
+
+    def annuler(self):
+        self.annulation.emit()
+        self.reject()
