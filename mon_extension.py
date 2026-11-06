@@ -22,7 +22,7 @@
  ***************************************************************************/
 """
 from qgis.PyQt.QtCore import QLocale, QTranslator, QCoreApplication
-from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsGeometry, Qgis
+from qgis.core import QgsSettings, QgsProject, QgsVectorLayer, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform, QgsGeometry, Qgis, QgsFeature, QgsFillSymbol
 from qgis.gui import QgsMapToolEmitPoint
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction
@@ -211,14 +211,33 @@ class MonExtension:
         if not distance.isdigit():
             self.iface.messageBar().pushMessage("Erreur", "La distance doit être un nombre entier", level=Qgis.Critical)
             return
+        # zone tampon calculee en Lambert 93
+        crs_l93 = QgsCoordinateReferenceSystem("EPSG:2154")
+        point_l93 = QgsCoordinateTransform(crs_carte, crs_l93, QgsProject.instance()).transform(point)
+        tampon = QgsGeometry.fromPointXY(point_l93).buffer(int(distance), 20)
+
+        # US5 : afficher la zone tampon dans une couche temporaire
+        zones = QgsProject.instance().mapLayersByName("Zone tampon")
+        if zones:
+            zone = zones[0]
+        else:
+            zone = QgsVectorLayer("Polygon?crs=EPSG:2154", "Zone tampon", "memory")
+            symbole = QgsFillSymbol.createSimple({"color": "0,0,0,0", "outline_color": "#000000", "outline_width": "0.26"})
+            zone.renderer().setSymbol(symbole)
+            QgsProject.instance().addMapLayer(zone, False)
+            QgsProject.instance().layerTreeRoot().insertLayer(0, zone)
+        zone.dataProvider().deleteFeatures(zone.allFeatureIds())  
+        objet_zone = QgsFeature()
+        objet_zone.setGeometry(tampon)
+        zone.dataProvider().addFeatures([objet_zone])
+        zone.triggerRepaint()
+
+        # US4 : compter les objets de la couche selectionnee dans la zone tampon
         couches = QgsProject.instance().mapLayersByName(self.dlg.cb_couches.currentText())
         if not couches:
             return
         couche = couches[0]
-        # zone tampon calculee en Lambert 93 (metres), puis passee dans le SCR de la couche
-        crs_l93 = QgsCoordinateReferenceSystem("EPSG:2154")
-        point_l93 = QgsCoordinateTransform(crs_carte, crs_l93, QgsProject.instance()).transform(point)
-        tampon = QgsGeometry.fromPointXY(point_l93).buffer(int(distance), 20)
+        tampon = QgsGeometry(tampon)  # copie, pour ne pas modifier la geometrie affichee
         tampon.transform(QgsCoordinateTransform(crs_l93, couche.crs(), QgsProject.instance()))
         nb_objets = 0
         for objet in couche.getFeatures():
